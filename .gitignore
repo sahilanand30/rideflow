@@ -1,0 +1,17 @@
+# Build output
+target/
+
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db
+
+# Environment and secrets (add these before you ever store real credentials)
+.env
+*.env
+application-local.properties

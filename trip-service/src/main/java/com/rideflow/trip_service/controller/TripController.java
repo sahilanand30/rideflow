@@ -34,6 +34,21 @@ public class TripController {
         return tripService.cancelTrip(id);
     }
 
+    @PostMapping("/{id}/arriving")
+    public Trip driverArriving(@PathVariable Long id) {
+        return tripService.transition(id, Trip.Status.DRIVER_ARRIVING);
+    }
+
+    @PostMapping("/{id}/start")
+    public Trip startTrip(@PathVariable Long id) {
+        return tripService.transition(id, Trip.Status.IN_PROGRESS);
+    }
+
+    @PostMapping("/{id}/complete")
+    public Trip completeTrip(@PathVariable Long id) {
+        return tripService.transition(id, Trip.Status.COMPLETED);
+    }
+
     public record RequestTripRequest(Long riderId,
                                      double pickupLat, double pickupLng,
                                      double dropLat, double dropLng) {}

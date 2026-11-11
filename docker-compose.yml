@@ -4,3 +4,8 @@ services:
     container_name: rideflow-kafka
     ports:
       - "9092:9092"
+  redis:
+    image: redis:7
+    container_name: rideflow-redis
+    ports:
+      - "6379:6379"

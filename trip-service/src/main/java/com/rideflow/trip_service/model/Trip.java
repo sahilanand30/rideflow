@@ -8,7 +8,17 @@ import java.time.Instant;
 public class Trip {
 
     public enum Status {
-        REQUESTED, MATCHED, DRIVER_ARRIVING, IN_PROGRESS, COMPLETED, CANCELLED
+        REQUESTED, MATCHED, DRIVER_ARRIVING, IN_PROGRESS, COMPLETED, CANCELLED, NO_DRIVERS_AVAILABLE;
+
+        public boolean canTransitionTo(Status next) {
+            return switch (this) {
+                case REQUESTED -> next == MATCHED || next == CANCELLED || next == NO_DRIVERS_AVAILABLE;
+                case MATCHED -> next == DRIVER_ARRIVING || next == CANCELLED;
+                case DRIVER_ARRIVING -> next == IN_PROGRESS || next == CANCELLED;
+                case IN_PROGRESS -> next == COMPLETED;
+                case COMPLETED, CANCELLED, NO_DRIVERS_AVAILABLE -> false;
+            };
+        }
     }
 
     @Id

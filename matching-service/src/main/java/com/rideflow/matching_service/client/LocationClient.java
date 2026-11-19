@@ -1,9 +1,12 @@
 package com.rideflow.matching_service.client;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
@@ -13,7 +16,16 @@ public class LocationClient {
     private final RestClient restClient;
 
     public LocationClient(@Value("${location-service.url}") String baseUrl) {
-        this.restClient = RestClient.create(baseUrl);
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(1))
+                .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(Duration.ofSeconds(2));
+
+        this.restClient = RestClient.builder()
+                .baseUrl(baseUrl)
+                .requestFactory(requestFactory)
+                .build();
     }
 
     public List<NearbyDriver> findNearby(double lat, double lng, double radiusKm) {
@@ -38,7 +50,9 @@ public class LocationClient {
         return response != null && response.reserved();
     }
 
-    public record ReserveRequest(Long tripId) {}
-    public record ReserveResponse(boolean reserved) {}
     public record NearbyDriver(Long driverId, double distanceKm) {}
+
+    public record ReserveRequest(Long tripId) {}
+
+    public record ReserveResponse(boolean reserved) {}
 }

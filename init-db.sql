@@ -1,0 +1,2 @@
+CREATE DATABASE trip_db;
+CREATE DATABASE payment_db;

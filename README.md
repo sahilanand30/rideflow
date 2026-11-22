@@ -1,3 +1,5 @@
+![CI](https://github.com/sahilanand30/rideflow/actions/workflows/ci.yml/badge.svg)
+
 # RideFlow
 
 A real-time ride-hailing backend built as event-driven microservices. A rider requests a trip, the system finds the nearest free driver, tracks the trip through its lifecycle, charges the fare, and notifies both sides, with services communicating mostly through Kafka events.

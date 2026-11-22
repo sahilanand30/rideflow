@@ -1,5 +1,6 @@
 package com.rideflow.location_service.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.geo.Distance;
 import org.springframework.data.geo.GeoResult;
 import org.springframework.data.geo.GeoResults;
@@ -9,6 +10,7 @@ import org.springframework.data.redis.connection.RedisGeoCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.domain.geo.GeoReference;
 import org.springframework.stereotype.Service;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,19 +19,26 @@ import java.util.List;
 public class LocationService {
 
     private static final String GEO_KEY = "drivers:geo";
+    private static final int SEARCH_POOL_SIZE = 50;
 
     private final StringRedisTemplate redis;
+    private final long driverTtlSeconds;
 
-    public LocationService(StringRedisTemplate redis) {
+    public LocationService(StringRedisTemplate redis,
+                           @Value("${location.driver-ttl-seconds:60}") long driverTtlSeconds) {
         this.redis = redis;
+        this.driverTtlSeconds = driverTtlSeconds;
     }
 
     public void updateLocation(Long driverId, double lat, double lng) {
+        // Mark the driver online first, then record the position
+        redis.opsForValue().set(onlineKey(driverId), "1", Duration.ofSeconds(driverTtlSeconds));
         // Redis expects longitude first, then latitude
         redis.opsForGeo().add(GEO_KEY, new Point(lng, lat), String.valueOf(driverId));
     }
 
     public List<NearbyDriver> findNearby(double lat, double lng, double radiusKm, int limit) {
+        // Ask for more than we need, because some results may be filtered out as offline
         GeoResults<RedisGeoCommands.GeoLocation<String>> results = redis.opsForGeo().search(
                 GEO_KEY,
                 GeoReference.fromCoordinate(lng, lat),
@@ -37,16 +46,22 @@ public class LocationService {
                 RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs()
                         .includeDistance()
                         .sortAscending()
-                        .limit(limit));
+                        .limit(SEARCH_POOL_SIZE));
 
         List<NearbyDriver> drivers = new ArrayList<>();
         if (results == null) {
             return drivers;
         }
         for (GeoResult<RedisGeoCommands.GeoLocation<String>> result : results) {
-            drivers.add(new NearbyDriver(
-                    Long.valueOf(result.getContent().getName()),
-                    result.getDistance().getValue()));
+            String driverId = result.getContent().getName();
+            if (!Boolean.TRUE.equals(redis.hasKey("driver:" + driverId + ":online"))) {
+                redis.opsForGeo().remove(GEO_KEY, driverId);   // clean up the stale entry
+                continue;
+            }
+            drivers.add(new NearbyDriver(Long.valueOf(driverId), result.getDistance().getValue()));
+            if (drivers.size() == limit) {
+                break;
+            }
         }
         return drivers;
     }
@@ -68,6 +83,10 @@ public class LocationService {
         if (String.valueOf(tripId).equals(holder)) {
             redis.delete(key);
         }
+    }
+
+    private String onlineKey(Long driverId) {
+        return "driver:" + driverId + ":online";
     }
 
     public record NearbyDriver(Long driverId, double distanceKm) {}

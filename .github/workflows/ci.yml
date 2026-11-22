@@ -13,7 +13,7 @@ jobs:
       matrix:
         include:
           - service: trip-service
-            test: TripStatusTest
+            test: TripStatusTest,TripServiceTest
           - service: payment-service
             test: FareCalculatorTest
     steps:
